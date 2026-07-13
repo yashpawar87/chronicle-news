@@ -10,6 +10,7 @@ asyncpg==0.30.0
 feedparser==6.0.11
 httpx==0.28.1
 trafilatura==2.0.0
+lxml_html_clean
 
 # Config & validation
 pydantic==2.11.3
