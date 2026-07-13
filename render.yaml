@@ -7,6 +7,19 @@ services:
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     autoDeploy: true
     healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: newspaper-ai-db
+          property: connectionString
+      - key: ADMIN_API_TOKEN
+        generateValue: true
+      - key: APP_ENV
+        value: production
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
 
 databases:
   - name: newspaper-ai-db
