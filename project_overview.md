@@ -75,9 +75,9 @@ npm run dev
 ## Deployment Shape
 
 - Deploy the frontend to Vercel.
-- Deploy the FastAPI backend separately on a server that supports Python and Postgres.
-- Set `BACKEND_API_BASE` in Vercel to the deployed backend URL.
-- Set the backend environment variables for database connection and admin token.
+- Deploy the FastAPI backend on Railway.
+- Set `BACKEND_API_BASE` in Vercel to the Railway backend URL.
+- Set the Railway environment variables for database connection, admin token, and CORS origins.
 
 ## Current Verification
 
