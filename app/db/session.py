@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ssl
+
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -24,8 +26,13 @@ def _normalize_database_url(url: str) -> tuple[str, dict[str, object]]:
     sslmode = query.pop("sslmode", None)
     if sslmode is not None:
         parsed = parsed.set(query=query)
-        if sslmode in {"require", "verify-ca", "verify-full"}:
-            connect_args["ssl"] = True
+        if sslmode == "require":
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            connect_args["ssl"] = context
+        elif sslmode in {"verify-ca", "verify-full"}:
+            connect_args["ssl"] = ssl.create_default_context()
 
     return str(parsed), connect_args
 
