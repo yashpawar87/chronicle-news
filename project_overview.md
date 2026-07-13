@@ -1,58 +1,43 @@
 # Project Overview
 
-`newspaper-ai` is now an RSS-first news reader. The app fetches stories from a fixed set of RSS feeds, keeps only today’s items, deduplicates them, stores them in Postgres, and serves them to a TanStack Start frontend with a swipe-card reading experience.
+`newspaper-ai` is now a stateless, live RSS-first news reader API. The app fetches stories from a fixed set of RSS feeds on-demand without storing anything in a database, and serves them to a TanStack Start frontend with a swipe-card reading experience.
 
 ## Current Architecture
 
-- Backend: FastAPI + PostgreSQL.
-- Fetching: RSS-only, no LLM pipeline in the active flow.
+- Backend: FastAPI (Stateless, live RSS fetcher API)
+- Fetching: Concurrent live RSS parsing on every request.
 - Frontend: TanStack Start app in `frontend/`, built for Vercel.
-- Data model: `Source` and `RawStory` are the only active database entities.
+- Data model: No persistence.
 
 ## What The App Does
 
 1. Loads RSS sources from `app/fetchers/sources.yaml`.
-2. Fetches stories from those feeds.
-3. Keeps only stories published today in `Asia/Kolkata`.
-4. Deduplicates by URL and title/source timing.
-5. Stores raw stories in Postgres.
-6. Groups stories by section for the frontend.
-7. Renders a left/right swipe deck on the home page.
+2. When the frontend requests `/feeds/sections`, it fetches the latest stories directly from the RSS feeds.
+3. Groups stories by section for the frontend.
+4. Renders a left/right swipe deck on the home page.
 
 ## Backend Status
 
-- `app/main.py` starts the FastAPI app and the fetch scheduler.
+- `app/main.py` starts the FastAPI app.
 - `GET /health` returns app status.
-- `POST /admin/run-fetch` manually triggers one fetch cycle.
-- `GET /admin/stats` shows raw story and source counts.
-- `GET /feeds/sections` returns the grouped RSS sections for the frontend.
+- `GET /feeds/sections` returns the grouped live RSS sections for the frontend.
+- **Removed**: Postgres, SQLAlchemy, Background Scheduler, Admin endpoints.
 
 ## Frontend Status
 
-- The Lovable-based frontend now lives in `frontend/`.
+- The Lovable-based frontend lives in `frontend/`.
 - The home page uses the original swipe-card layout.
 - Section tabs sit below the nav bar and switch the swipe deck content.
 - Story images are extracted from RSS enclosures and displayed in cards.
 - Production builds are configured for Vercel through Nitro.
 
-## Removed / No Longer Active
-
-- The old clustering, rewriting, ranking, and edition-generation pipeline.
-- Alembic-related code paths.
-- The old article detail and editions API flow.
-- Groq-based LLM calls in the main user flow.
-
 ## Main Files
 
 - Backend entrypoint: [app/main.py](/Users/yashpawar/newspaper-ai/app/main.py)
 - Backend config: [app/config.py](/Users/yashpawar/newspaper-ai/app/config.py)
-- Database models: [app/db/models.py](/Users/yashpawar/newspaper-ai/app/db/models.py)
-- RSS fetch manager: [app/fetchers/manager.py](/Users/yashpawar/newspaper-ai/app/fetchers/manager.py)
+- RSS fetcher: [app/fetchers/rss/rss_fetcher.py](/Users/yashpawar/newspaper-ai/app/fetchers/rss/rss_fetcher.py)
 - RSS section API: [app/api/routes/feeds.py](/Users/yashpawar/newspaper-ai/app/api/routes/feeds.py)
-- Admin routes: [app/api/routes/admin.py](/Users/yashpawar/newspaper-ai/app/api/routes/admin.py)
 - Frontend Vercel config: [frontend/vite.config.ts](/Users/yashpawar/newspaper-ai/frontend/vite.config.ts)
-- Frontend home page: [frontend/src/routes/index.tsx](/Users/yashpawar/newspaper-ai/frontend/src/routes/index.tsx)
-- Frontend RSS data layer: [frontend/src/lib/news.server.ts](/Users/yashpawar/newspaper-ai/frontend/src/lib/news.server.ts)
 
 ## Local Run
 
@@ -72,15 +57,25 @@ npm install
 npm run dev
 ```
 
-## Deployment Shape
+## Deployment Shape (100% Vercel)
 
-- Deploy the frontend to Vercel.
-- Deploy the FastAPI backend on Railway.
-- Set `BACKEND_API_BASE` in Vercel to the Railway backend URL.
-- Set the Railway environment variables for database connection, admin token, and CORS origins.
+You can now deploy both the frontend and backend to Vercel for free!
 
-## Current Verification
+**1. Deploy the Backend (Python API):**
+- Create a New Project in Vercel.
+- Import the `yashpawar87/chronicle-news` repository.
+- Leave the Root Directory as `/`.
+- Vercel will automatically detect `vercel.json` and deploy your FastAPI backend as a Serverless Function.
+- Copy the backend URL (e.g., `https://chronicle-news-backend.vercel.app`).
 
-- Backend Python files compile successfully.
-- Frontend production build succeeds with the Vercel preset.
-- API and fetcher tests pass locally.
+**2. Deploy the Frontend:**
+- Create another New Project in Vercel.
+- Import the `yashpawar87/chronicle-news` repository again.
+- **CRITICAL:** Set the **Root Directory** to `frontend`.
+- Add an Environment Variable: `BACKEND_API_BASE` set to the backend URL you copied in step 1.
+- Deploy!
+
+**3. Set CORS:**
+- Go back to your Backend project in Vercel -> Settings -> Environment Variables.
+- Add `CORS_ALLOWED_ORIGINS` and set it to your frontend URL.
+- Redeploy the backend.

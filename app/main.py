@@ -1,6 +1,6 @@
 """FastAPI application entrypoint for the RSS backend.
 
-Registers all routes, sets up DB lifecycle, and starts the fetch scheduler.
+Registers all routes and starts the application.
 """
 
 from __future__ import annotations
@@ -25,26 +25,14 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown hooks."""
-    from app.db.session import init_db, close_db
-    from app.fetchers.scheduler import start_fetch_scheduler, stop_fetch_scheduler
-
     # ── Startup ──────────────────────────────────────────────────────
     logger.info("Starting AI Editor-in-Chief backend...")
     logger.info("Environment: %s", settings.app_env)
-
-    # Initialize database tables
-    await init_db()
-    logger.info("Database initialized")
-
-    # Start fetch scheduler
-    start_fetch_scheduler()
 
     yield
 
     # ── Shutdown ─────────────────────────────────────────────────────
     logger.info("Shutting down...")
-    stop_fetch_scheduler()
-    await close_db()
     logger.info("Shutdown complete")
 
 
@@ -54,13 +42,13 @@ app = FastAPI(
     title="AI Editor-in-Chief",
     description=(
         "A lightweight RSS backend that fetches today's stories from configured "
-        "sources and serves them to the frontend."
+        "sources and serves them to the frontend live."
     ),
     version="1.0.0",
     lifespan=lifespan,
 )
 
-# CORS — allow all origins for development
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -72,10 +60,8 @@ app.add_middleware(
 # ── Register Routes ─────────────────────────────────────────────────
 
 from app.api.routes.feeds import router as feeds_router
-from app.api.routes.admin import router as admin_router
 
 app.include_router(feeds_router)
-app.include_router(admin_router)
 
 
 # ── Health Check ────────────────────────────────────────────────────

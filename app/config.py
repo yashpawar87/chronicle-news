@@ -23,28 +23,17 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
 
-    # ── Database / Security ─────────────────────────────────────────────
-    database_url: str | None = None
-    admin_api_token: str | None = None
+    # ── Security ────────────────────────────────────────────────────────
     cors_allowed_origins: str = ""
 
     # ── Fetcher ──────────────────────────────────────────────────────────
-    fetch_interval_minutes: int = 10
     sources_yaml_path: str = "app/fetchers/sources.yaml"
     fetch_news_timezone: str = "Asia/Kolkata"
-
-    admin_fetch_cooldown_seconds: int = 300
 
     @model_validator(mode="after")
     def apply_environment_defaults(self) -> "Settings":
         """Keep development easy, but force explicit secrets in production."""
         if self.app_env == "development":
-            if not self.database_url:
-                self.database_url = (
-                    "postgresql+asyncpg://postgres:postgres@localhost:5432/newspaper_ai"
-                )
-            if not self.admin_api_token:
-                self.admin_api_token = "dev-admin-token"
             if not self.cors_allowed_origins:
                 self.cors_allowed_origins = (
                     "http://localhost:3000,"
@@ -55,10 +44,6 @@ class Settings(BaseSettings):
             return self
 
         missing = []
-        if not self.database_url:
-            missing.append("DATABASE_URL")
-        if not self.admin_api_token:
-            missing.append("ADMIN_API_TOKEN")
         if not self.cors_allowed_origins:
             missing.append("CORS_ALLOWED_ORIGINS")
         if missing:

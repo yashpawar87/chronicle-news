@@ -5,18 +5,19 @@ GET /feeds/sections  -- grouped RSS stories by configured source
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from datetime import datetime
 from pathlib import Path
 
 import yaml
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.config import settings
-from app.db.models import Source
-from app.db.session import get_db
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import selectinload
+
+from app.config import settings
+from app.fetchers.rss.rss_fetcher import RSSFetcher
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/feeds", tags=["feeds"])
 
@@ -49,55 +50,60 @@ def _load_section_config() -> list[dict]:
 
 
 @router.get("/sections", response_model=list[FeedSectionResponse])
-async def get_sections(db: AsyncSession = Depends(get_db)):
-    """Return grouped RSS stories for the frontend."""
+async def get_sections():
+    """Return live grouped RSS stories for the frontend."""
     config_entries = _load_section_config()
-    section_order = [entry.get("name", "Untitled") for entry in config_entries]
-    feed_urls = {entry.get("name", "Untitled"): entry.get("url") for entry in config_entries}
+    
+    fetchers = []
+    for entry in config_entries:
+        source_type = entry.get("type", "rss")
+        name = entry.get("name", "Untitled")
+        url = entry.get("url")
+        
+        if source_type == "rss" and url:
+            # extract_full_text=False to speed up live API
+            fetchers.append(RSSFetcher(source_name=name, feed_url=url, extract_full_text=False))
 
-    result = await db.execute(
-        select(Source)
-        .options(selectinload(Source.raw_stories))
-        .order_by(Source.name.asc())
+    logger.info("Fetching live RSS for %d sources...", len(fetchers))
+    
+    results = await asyncio.gather(
+        *[f.fetch() for f in fetchers],
+        return_exceptions=True
     )
-    sources = result.scalars().unique().all()
-
-    source_map = {source.name: source for source in sources}
+    
     sections: list[FeedSectionResponse] = []
-
-    for section_name in section_order:
-        source = source_map.get(section_name)
-        if not source:
-            sections.append(
-                FeedSectionResponse(
-                    section=section_name,
-                    feed_url=feed_urls.get(section_name),
-                    stories=[],
-                )
-            )
-            continue
-
-        stories = sorted(
-            source.raw_stories,
-            key=lambda story: story.published_at or story.fetched_at,
-            reverse=True,
-        )
+    
+    fake_id = 1
+    
+    for idx, entry in enumerate(config_entries):
+        section_name = entry.get("name", "Untitled")
+        feed_url = entry.get("url")
+        
+        stories_in_section = []
+        if idx < len(results):
+            result = results[idx]
+            if not isinstance(result, Exception):
+                for story in result[:8]:
+                    stories_in_section.append(
+                        FeedStory(
+                            id=fake_id,
+                            title=story.title,
+                            summary=story.summary,
+                            url=story.url,
+                            image_url=story.image_url,
+                            published_at=story.published_at,
+                            source_name=story.source_name,
+                        )
+                    )
+                    fake_id += 1
+            else:
+                logger.error("Error fetching %s: %s", section_name, result)
+                
         sections.append(
             FeedSectionResponse(
                 section=section_name,
-                feed_url=source.feed_url or feed_urls.get(section_name),
-                stories=[
-                    FeedStory(
-                        id=story.id,
-                        title=story.title,
-                        summary=story.summary,
-                        url=story.url,
-                        image_url=story.image_url,
-                        published_at=story.published_at,
-                        source_name=source.name,
-                    )
-                    for story in stories[:8]
-                ],
+                feed_url=feed_url,
+                stories=stories_in_section,
             )
         )
 
