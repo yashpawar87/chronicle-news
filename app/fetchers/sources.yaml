@@ -1,0 +1,46 @@
+# ─────────────────────────────────────────────────────────────────────────
+# Declarative source configuration for the AI Editor-in-Chief.
+#
+# Adding a new source = adding a YAML entry below.
+# No Python code changes required.
+#
+# Supported types:
+#   rss      → app.fetchers.rss.rss_fetcher.RSSFetcher
+# ─────────────────────────────────────────────────────────────────────────
+
+sources:
+  - name: Top stories
+    type: rss
+    url: https://timesofindia.indiatimes.com/rssfeedstopstories.cms
+
+  - name: Latest Stories
+    type: rss
+    url: https://www.indiatoday.in/rss/home
+
+  - name: Tech
+    type: rss
+    url: https://feeds.feedburner.com/techgenyz
+
+  - name: Maharashtra Marathi
+    type: rss
+    url: https://divyamarathi.bhaskar.com/rss-v1--category-5492.xml
+
+  - name: Business
+    type: rss
+    url: https://www.thehindu.com/business/feeder/default.rss
+
+  - name: Entertainment
+    type: rss
+    url: https://www.thehindu.com/entertainment/feeder/default.rss
+
+  - name: Sports
+    type: rss
+    url: https://www.thehindu.com/sport/feeder/default.rss
+
+  - name: Lifestyle and Fashion
+    type: rss
+    url: https://timesofindia.indiatimes.com/rssfeeds/2886704.cms
+
+  - name: Cricket
+    type: rss
+    url: https://timesofindia.indiatimes.com/rssfeeds/54829575.cms
