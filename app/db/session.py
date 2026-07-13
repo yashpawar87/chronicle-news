@@ -12,15 +12,28 @@ from sqlalchemy.ext.asyncio import (
 from app.config import settings
 
 
-def _normalize_database_url(url: str) -> str:
-    """Convert Render's standard Postgres URL to the asyncpg SQLAlchemy form."""
+def _normalize_database_url(url: str) -> tuple[str, dict[str, object]]:
+    """Convert common Postgres URLs into asyncpg form and map SSL settings."""
     parsed = make_url(url)
+    connect_args: dict[str, object] = {}
+
     if parsed.drivername in {"postgresql", "postgres"}:
         parsed = parsed.set(drivername="postgresql+asyncpg")
-    return str(parsed)
+
+    query = dict(parsed.query)
+    sslmode = query.pop("sslmode", None)
+    if sslmode is not None:
+        parsed = parsed.set(query=query)
+        if sslmode in {"require", "verify-ca", "verify-full"}:
+            connect_args["ssl"] = True
+
+    return str(parsed), connect_args
+
+DATABASE_URL, CONNECT_ARGS = _normalize_database_url(settings.database_url)
 
 engine = create_async_engine(
-    _normalize_database_url(settings.database_url),
+    DATABASE_URL,
+    connect_args=CONNECT_ARGS,
     echo=(settings.app_env == "development"),
     pool_size=5,
     max_overflow=10,
